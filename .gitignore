@@ -17,12 +17,33 @@ Thumbs.db
 .env.test.local
 .env.production.local
 
+# Gradle & Build artifacts
+.gradle/
+build/
+bin/
+out/
+target/
+*.jar
+*.war
+
 # Logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Docker volumes (we don't need to commit these)
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+
+# Agent / Tool cache
+.agents/
+.kilo/
+skills-lock.json
+
+# Docker volumes
 uploads_data/
-mongo_data/
+postgres_*_data/
+prometheus_data/
+grafana_data/

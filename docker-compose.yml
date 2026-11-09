@@ -1,35 +1,256 @@
 services:
-  mongo:
-    image: mongo:7
-    container_name: filesharex-mongo
+  # Infrastructure Services
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    container_name: filesharex-eureka
     restart: unless-stopped
     ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+      - "8761:8761"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  backend:
+  config-server:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: filesharex-backend
+      context: .
+      dockerfile: config-server/Dockerfile
+    container_name: filesharex-config
     restart: unless-stopped
     depends_on:
-      - mongo
+      eureka-server:
+        condition: service_healthy
+    ports:
+      - "9999:9999"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Application Services
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: filesharex-gateway
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
     environment:
-      SPRING_DATA_MONGODB_URI: mongodb://mongo:27017/FileShareX
-      PORT: "8080"
-      UPLOAD_DIR: "/app/uploads"
-      CLERK_ISSUER: "https://key-foxhound-56.clerk.accounts.dev"
-      CLERK_JWKS_URL: "https://key-foxhound-56.clerk.accounts.dev/.well-known/jwks.json"
-      # CLERK_WEBHOOK_SECRET: ...
-      # RAZORPAY_KEY_ID: ...
-      # RAZORPAY_KEY_SECRET: ...
+      CLERK_ISSUER: ${CLERK_ISSUER:-https://key-foxhound-56.clerk.accounts.dev}
+      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-https://key-foxhound-56.clerk.accounts.dev/.well-known/jwks.json}
     ports:
       - "8080:8080"
-    volumes:
-      - uploads_data:/app/uploads
 
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: filesharex-user-service
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres-users:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-users:5432/filesharex_users
+      SPRING_DATASOURCE_USERNAME: filesharex
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      CLERK_ISSUER: ${CLERK_ISSUER:-https://key-foxhound-56.clerk.accounts.dev}
+      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-https://key-foxhound-56.clerk.accounts.dev/.well-known/jwks.json}
+      CLERK_WEBHOOK_SECRET: ${CLERK_WEBHOOK_SECRET:-}
+    ports:
+      - "8081:8081"
+
+  file-service:
+    build:
+      context: .
+      dockerfile: file-service/Dockerfile
+    container_name: filesharex-file-service
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres-files:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-files:5432/filesharex_files
+      SPRING_DATASOURCE_USERNAME: filesharex
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      FILE_STORAGE_TYPE: ${FILE_STORAGE_TYPE:-r2}
+      R2_ENDPOINT: ${R2_ENDPOINT:-https://ACCOUNT_ID.r2.cloudflarestorage.com}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
+      R2_SECRET_KEY: ${R2_SECRET_KEY:-}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-filesharex-uploads}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-https://pub-xxx.r2.dev}
+      USER_SERVICE_URL: http://user-service:8081/api/v1.0
+    ports:
+      - "8082:8082"
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: payment-service/Dockerfile
+    container_name: filesharex-payment-service
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres-payments:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payments:5432/filesharex_payments
+      SPRING_DATASOURCE_USERNAME: filesharex
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-razorpay}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
+      USER_SERVICE_URL: http://user-service:8081/api/v1.0
+    ports:
+      - "8083:8083"
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: filesharex-notification-service
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      postgres-notifications:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notifications:5432/filesharex_notifications
+      SPRING_DATASOURCE_USERNAME: filesharex
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      MAIL_HOST: ${MAIL_HOST:-smtp.gmail.com}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    ports:
+      - "8084:8084"
+
+  # Databases
+  postgres-users:
+    image: postgres:17-alpine
+    container_name: filesharex-postgres-users
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: filesharex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      POSTGRES_DB: filesharex_users
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_users_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filesharex -d filesharex_users"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-files:
+    image: postgres:17-alpine
+    container_name: filesharex-postgres-files
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: filesharex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      POSTGRES_DB: filesharex_files
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_files_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filesharex -d filesharex_files"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-payments:
+    image: postgres:17-alpine
+    container_name: filesharex-postgres-payments
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: filesharex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      POSTGRES_DB: filesharex_payments
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_payments_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filesharex -d filesharex_payments"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-notifications:
+    image: postgres:17-alpine
+    container_name: filesharex-postgres-notifications
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: filesharex
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
+      POSTGRES_DB: filesharex_notifications
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_notifications_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U filesharex -d filesharex_notifications"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: filesharex-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: filesharex-grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      - grafana_data:/var/lib/grafana
+
+  # Frontend
   frontend:
     build:
       context: ./frontend
@@ -41,10 +262,14 @@ services:
     container_name: filesharex-frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      - gateway
     ports:
       - "5174:80"
 
 volumes:
-  mongo_data:
-  uploads_data:
+  postgres_users_data:
+  postgres_files_data:
+  postgres_payments_data:
+  postgres_notifications_data:
+  prometheus_data:
+  grafana_data:

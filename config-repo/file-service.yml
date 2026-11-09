@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: file-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/filesharex_files}
+    username: ${SPRING_DATASOURCE_USERNAME:filesharex}
+    password: ${SPRING_DATASOURCE_PASSWORD:filesharex}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 25MB
+
+server:
+  port: 8082
+  servlet:
+    context-path: /api/v1.0
+
+spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+# File storage configuration
+file:
+  storage:
+    type: ${FILE_STORAGE_TYPE:local}
+
+# Cloudflare R2 configuration
+r2:
+  endpoint: ${R2_ENDPOINT:https://ACCOUNT_ID.r2.cloudflarestorage.com}
+  access-key: ${R2_ACCESS_KEY:}
+  secret-key: ${R2_SECRET_KEY:}
+  bucket-name: ${R2_BUCKET_NAME:filesharex-uploads}
+  public-url: ${R2_PUBLIC_URL:https://pub-xxx.r2.dev}
+
+# User service client
+services:
+  user:
+    base-url: ${USER_SERVICE_URL:http://localhost:8081/api/v1.0}

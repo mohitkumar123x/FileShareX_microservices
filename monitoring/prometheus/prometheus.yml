@@ -1,0 +1,48 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'filesharex-gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8080']
+        labels:
+          service: 'gateway'
+
+  - job_name: 'filesharex-user-service'
+    metrics_path: '/api/v1.0/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8081']
+        labels:
+          service: 'user-service'
+
+  - job_name: 'filesharex-file-service'
+    metrics_path: '/api/v1.0/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8082']
+        labels:
+          service: 'file-service'
+
+  - job_name: 'filesharex-payment-service'
+    metrics_path: '/api/v1.0/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8083']
+        labels:
+          service: 'payment-service'
+
+  - job_name: 'filesharex-notification-service'
+    metrics_path: '/api/v1.0/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8084']
+        labels:
+          service: 'notification-service'
+
+  - job_name: 'eureka-server'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['host.docker.internal:8761']
+        labels:
+          service: 'eureka-server'
+
+  # config-server excluded: Spring Cloud Config Server intercepts /actuator/prometheus as a profile lookup

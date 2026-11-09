@@ -1,0 +1,69 @@
+spring:
+  application:
+    name: file-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:9999}
+
+server:
+  port: 8082
+  servlet:
+    context-path: /api/v1.0
+
+spring.datasource.url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5434/filesharex_files}
+spring.datasource.username: ${SPRING_DATASOURCE_USERNAME:filesharex}
+spring.datasource.password: ${SPRING_DATASOURCE_PASSWORD:filesharex}
+spring.jpa.hibernate.ddl-auto: update
+spring.jpa.open-in-view: false
+
+spring.servlet.multipart.max-file-size: 5MB
+spring.servlet.multipart.max-request-size: 25MB
+
+spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+# File storage
+file.storage.type: ${FILE_STORAGE_TYPE:local}
+file.upload.dir: ${UPLOAD_DIR:uploads}
+
+# Cloudflare R2
+r2.endpoint: ${R2_ENDPOINT:https://ACCOUNT_ID.r2.cloudflarestorage.com}
+r2.access-key: ${R2_ACCESS_KEY:}
+r2.secret-key: ${R2_SECRET_KEY:}
+r2.bucket-name: ${R2_BUCKET_NAME:filesharex-uploads}
+r2.public-url: ${R2_PUBLIC_URL:https://pub-xxx.r2.dev}
+
+# User service client
+services.user.base-url: ${USER_SERVICE_URL:http://localhost:8081/api/v1.0}
+
+# Validation rules
+file.validation.max-size: 5242880
+file.validation.allowed-types: image/jpeg,image/png,image/gif,application/pdf,text/plain
+
+# Resilience4j Circuit Breaker
+resilience4j.circuitbreaker.instances.userService.failure-rate-threshold: 50
+resilience4j.circuitbreaker.instances.userService.wait-duration-in-open-state: 30s
+resilience4j.circuitbreaker.instances.userService.sliding-window-size: 10
+resilience4j.circuitbreaker.instances.userService.permitted-number-of-calls-in-half-open-state: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

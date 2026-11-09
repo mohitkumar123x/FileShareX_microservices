@@ -1,0 +1,16 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
+rootProject.name = 'filesharex'
+
+include 'eureka-server'
+include 'config-server'
+include 'gateway'
+include 'user-service'
+include 'file-service'
+include 'payment-service'
+include 'notification-service'

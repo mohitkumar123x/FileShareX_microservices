@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: payment-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:9999}
+
+server:
+  port: 8083
+  servlet:
+    context-path: /api/v1.0
+
+spring.datasource.url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5435/filesharex_payments}
+spring.datasource.username: ${SPRING_DATASOURCE_USERNAME:filesharex}
+spring.datasource.password: ${SPRING_DATASOURCE_PASSWORD:filesharex}
+spring.jpa.hibernate.ddl-auto: update
+spring.jpa.open-in-view: false
+
+spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+# Payment provider
+payment.provider: ${PAYMENT_PROVIDER:razorpay}
+
+# Razorpay
+razorpay.key.id: ${RAZORPAY_KEY_ID:ADD_YOUR_RAZORPAY_KEY}
+razorpay.key.secret: ${RAZORPAY_KEY_SECRET:ADD_YOUR_RAZORPAY_SECRET}
+
+# User service client
+services.user.base-url: ${USER_SERVICE_URL:http://localhost:8081/api/v1.0}
+
+# Resilience4j Circuit Breaker
+resilience4j.circuitbreaker.instances.userService.failure-rate-threshold: 50
+resilience4j.circuitbreaker.instances.userService.wait-duration-in-open-state: 30s
+resilience4j.circuitbreaker.instances.userService.sliding-window-size: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

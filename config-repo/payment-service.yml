@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5435/filesharex_payments}
+    username: ${SPRING_DATASOURCE_USERNAME:filesharex}
+    password: ${SPRING_DATASOURCE_PASSWORD:filesharex}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+server:
+  port: 8083
+  servlet:
+    context-path: /api/v1.0
+
+spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+# Payment provider
+payment:
+  provider: ${PAYMENT_PROVIDER:razorpay}
+
+# User service client
+services:
+  user:
+    base-url: ${USER_SERVICE_URL:http://localhost:8081/api/v1.0}

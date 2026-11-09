@@ -1,0 +1,34 @@
+# Shared configuration for all services
+
+# Clerk authentication
+clerk:
+  issuer: ${CLERK_ISSUER:ADD_YOUR_ISSUER}
+  jwks-url: ${CLERK_JWKS_URL:ADD_YOUR_JWKS_URL}
+  webhook:
+    secret: ${CLERK_WEBHOOK_SECRET:ADD_YOUR_WEBHOOK_SECRET}
+
+# Razorpay configuration
+razorpay:
+  key:
+    id: ${RAZORPAY_KEY_ID:ADD_YOUR_RAZORPAY_KEY}
+    secret: ${RAZORPAY_KEY_SECRET:ADD_YOUR_RAZORPAY_SECRET}
+
+# Actuator / Micrometer
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+# Logging
+logging:
+  level:
+    filesharex: INFO
+    org.springframework.cloud: INFO

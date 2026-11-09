@@ -1,0 +1,61 @@
+name: Deploy Backend to EC2
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "config-repo/**"
+      - "config-server/**"
+      - "eureka-server/**"
+      - "gateway/**"
+      - "user-service/**"
+      - "file-service/**"
+      - "payment-service/**"
+      - "notification-service/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-backend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          script: |
+            # 1. Ensure project directory exists
+            if [ ! -d "$HOME/fileshare_x_microservice" ]; then
+              git clone https://github.com/${{ github.repository }}.git $HOME/fileshare_x_microservice
+            fi
+            cd $HOME/fileshare_x_microservice
+
+            # 2. Pull latest code from main
+            git reset --hard
+            git pull origin main
+
+            # 3. Create .env file from GitHub Secrets
+            cat << 'EOF' > .env
+            CLERK_ISSUER=${{ secrets.CLERK_ISSUER }}
+            CLERK_JWKS_URL=${{ secrets.CLERK_JWKS_URL }}
+            CLERK_WEBHOOK_SECRET=${{ secrets.CLERK_WEBHOOK_SECRET }}
+            RAZORPAY_KEY_ID=${{ secrets.RAZORPAY_KEY_ID }}
+            RAZORPAY_KEY_SECRET=${{ secrets.RAZORPAY_KEY_SECRET }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            FILE_STORAGE_TYPE=${{ secrets.FILE_STORAGE_TYPE }}
+            R2_ENDPOINT=${{ secrets.R2_ENDPOINT }}
+            R2_ACCESS_KEY=${{ secrets.R2_ACCESS_KEY }}
+            R2_SECRET_KEY=${{ secrets.R2_SECRET_KEY }}
+            R2_BUCKET_NAME=${{ secrets.R2_BUCKET_NAME }}
+            R2_PUBLIC_URL=${{ secrets.R2_PUBLIC_URL }}
+            EOF
+
+            # 4. Rebuild and launch containers
+            docker compose up -d --build --remove-orphans
+
+            # 5. Clean up dangling images to save free tier disk space
+            docker image prune -f
+

@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: user-service
+  config:
+    import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:9999}
+
+server:
+  port: 8081
+  servlet:
+    context-path: /api/v1.0
+
+spring.datasource.url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/filesharex_users}
+spring.datasource.username: ${SPRING_DATASOURCE_USERNAME:filesharex}
+spring.datasource.password: ${SPRING_DATASOURCE_PASSWORD:filesharex}
+spring.jpa.hibernate.ddl-auto: update
+spring.jpa.open-in-view: false
+
+spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+
+clerk.issuer: ${CLERK_ISSUER:ADD_YOUR_ISSUER}
+clerk.jwks-url: ${CLERK_JWKS_URL:ADD_YOUR_JWKS_URL}
+clerk.webhook.secret: ${CLERK_WEBHOOK_SECRET:ADD_YOUR_WEBHOOK_SECRET}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  tracing:
+    sampling:
+      probability: 1.0
+  metrics:
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:},%X{traceId:-},%X{spanId:-}]"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
