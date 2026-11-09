@@ -1129,4 +1129,36 @@ The root `.gitignore` contained a wildcard rule `*.jar` intended to ignore compi
    git commit -m "fix: include gradle-wrapper.jar in repository"
    ```
 
+---
+
+### Issue 15.3: Container Eureka Unhealthy Due to Missing Curl and Missing Start Period in Alpine Image
+
+**Error:**
+```text
+Container filesharex-eureka Starting
+Container filesharex-eureka Waiting
+Container filesharex-eureka Error
+dependency failed to start: container filesharex-eureka is unhealthy
+Process exited with status 1
+```
+
+**Root Causes:**
+1. **Missing `curl` in Alpine**: The base image `eclipse-temurin:21-jre-alpine` is an ultra-minimal Alpine Linux image and does not bundle `curl` by default. The Docker Compose healthcheck `["CMD", "curl", "-f", ...]` failed immediately with `curl: not found`.
+2. **Missing `start_period`**: Without `start_period: 40s`, Docker evaluated health immediately upon container start, failing before Spring Boot finished initializing its application context and Tomcat web server.
+
+**Fix:**
+1. Installed `curl` inside `eureka-server/Dockerfile` and `config-server/Dockerfile`:
+   ```dockerfile
+   RUN apk add --no-cache curl
+   ```
+2. Added `start_period: 40s` and switched to `CMD-SHELL` with retry intervals in `docker-compose.yml`:
+   ```yaml
+   healthcheck:
+     test: ["CMD-SHELL", "curl -f http://localhost:8761/actuator/health || exit 1"]
+     interval: 10s
+     timeout: 5s
+     retries: 5
+     start_period: 40s
+   ```
+
 
