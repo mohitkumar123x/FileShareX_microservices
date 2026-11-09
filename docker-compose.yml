@@ -28,6 +28,8 @@ services:
         condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx150m -XX:+UseG1GC"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: "file:/config-repo,file:./config-repo"
     ports:
       - "9999:9999"
     healthcheck:
@@ -51,6 +53,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:9999
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:9999
       CLERK_ISSUER: ${CLERK_ISSUER:-https://key-foxhound-56.clerk.accounts.dev}
       CLERK_JWKS_URL: ${CLERK_JWKS_URL:-https://key-foxhound-56.clerk.accounts.dev/.well-known/jwks.json}
     ports:
@@ -71,6 +76,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:9999
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:9999
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-users:5432/filesharex_users
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
@@ -95,15 +103,18 @@ services:
         condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:9999
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:9999
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-files:5432/filesharex_files
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
       FILE_STORAGE_TYPE: ${FILE_STORAGE_TYPE:-r2}
-      R2_ENDPOINT: ${R2_ENDPOINT:-https://ACCOUNT_ID.r2.cloudflarestorage.com}
+      R2_ENDPOINT: ${R2_ENDPOINT:-https://s3.ap-southeast-2.amazonaws.com}
       R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
       R2_SECRET_KEY: ${R2_SECRET_KEY:-}
-      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-filesharex-uploads}
-      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-https://pub-xxx.r2.dev}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:-filesharex-storage-mohit}
+      R2_PUBLIC_URL: ${R2_PUBLIC_URL:-https://filesharex-storage-mohit.s3.ap-southeast-2.amazonaws.com}
       R2_REGION: ${R2_REGION:-ap-southeast-2}
       USER_SERVICE_URL: http://user-service:8081/api/v1.0
     ports:
@@ -124,10 +135,13 @@ services:
         condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:9999
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:9999
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payments:5432/filesharex_payments
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
-      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-razorpay}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}
       USER_SERVICE_URL: http://user-service:8081/api/v1.0
@@ -149,6 +163,9 @@ services:
         condition: service_healthy
     environment:
       JAVA_TOOL_OPTIONS: "-Xms64m -Xmx150m -XX:+UseG1GC"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      CONFIG_SERVER_URL: http://config-server:9999
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:9999
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notifications:5432/filesharex_notifications
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}

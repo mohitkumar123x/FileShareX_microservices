@@ -3,5 +3,6 @@ RUN apk add --no-cache curl
 WORKDIR /app
 COPY config-server/build/libs/*SNAPSHOT.jar app.jar
 COPY config-repo /config-repo
+COPY config-repo /app/config-repo
 EXPOSE 9999
 ENTRYPOINT ["java", "-jar", "app.jar"]

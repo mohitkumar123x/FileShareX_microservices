@@ -1208,6 +1208,66 @@ Error uploading files: AxiosError: Network Error
    When requests use relative `/api/v1.0`, browsers automatically target the host they loaded from (`http://3.107.225.31/api/v1.0`), which Nginx seamlessly reverse-proxies to `gateway:8080` on the Docker bridge network.
 2. Added `frontend/**` to `deploy-backend.yml` workflow triggers.
 
+---
+
+### Issue 15.6: 502 Bad Gateway on `/api/v1.0/*` Due to Nginx Proxy Path Mangling and Inter-Container Service Discovery
+
+**Error:**
+```text
+Failed to load resource: the server responded with a status of 502 (Bad Gateway) api/v1.0/users/credits:1
+Failed to load resource: the server responded with a status of 502 (Bad Gateway) api/v1.0/files/my:1
+Failed to load resource: the server responded with a status of 502 (Bad Gateway) api/v1.0/files/upload:1
+AxiosError: Request failed with status code 502
+```
+
+**Root Causes:**
+1. **Nginx Proxy URI Appending**: `proxy_pass http://gateway:8080/api/;` inside `frontend/nginx.conf` replaced the `/api/` matching URI with `/api/`, leading to malformed upstream URIs or connection resets.
+2. **Missing Eureka & Config Server URLs in Docker Environment**: In `docker-compose.yml`, downstream services and Gateway defaulted to `http://localhost:8761/eureka/` and `http://localhost:9999`. Inside Docker containers, `localhost` points to the container itself rather than the host or sibling container, preventing Gateway from discovering downstream services and causing TCP connection timeouts.
+3. **Missing Config-Repo Path in Config-Server**: `config-server` native search location was looking in `./config-repo` while the Dockerfile copied to `/config-repo`.
+
+**Fix:**
+1. In `frontend/nginx.conf`, set `proxy_pass http://gateway:8080;` without trailing URI path, preserving the complete incoming `/api/v1.0/...` URI, and configured 60s proxy timeouts and 50M `client_max_body_size`.
+2. In `docker-compose.yml`, explicitly set `EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/`, `CONFIG_SERVER_URL: http://config-server:9999`, and `SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:9999` across all microservices and Gateway.
+3. Added fallback `${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:...}` to all `application.yml` files.
+
+---
+
+### Issue 15.7: Gateway StripPrefix=2 Removing Required Microservice Servlet Context Paths
+
+**Error:**
+```text
+Downstream services return 404 Not Found or Connection Reset when routed via Spring Cloud Gateway.
+```
+
+**Root Causes:**
+Microservices (`user-service`, `file-service`, `payment-service`, `notification-service`) configure:
+```yaml
+server:
+  servlet:
+    context-path: /api/v1.0
+```
+Tomcat inside each microservice only routes requests that begin with `/api/v1.0`. Gateway's route definition had `StripPrefix=2`, which stripped `/api` and `/v1.0` before forwarding to the downstream service. The downstream Tomcat instance received `/files/upload` instead of `/api/v1.0/files/upload` and rejected it.
+
+**Fix:**
+Removed `StripPrefix=2` from `gateway/src/main/resources/application.yml` and `config-repo/gateway.yml`, preserving the full `/api/v1.0` context path for all downstream microservice routes.
+
+---
+
+### Issue 15.8: File Upload Failure on Modern Documents (.docx) and Large Files
+
+**Error:**
+```text
+File type not allowed. Allowed types: image/jpeg,image/png,image/gif,application/pdf,text/plain
+```
+
+**Root Causes:**
+1. `FileTypeValidationRule` strictly limited uploads to legacy formats (`image/*`, `application/pdf`, `text/plain`), rejecting Word files (`.docx`), Excel spreadsheets, archives, etc.
+2. Multipart upload limit in `file-service` was restricted to 5MB (`max-file-size: 5MB`).
+
+**Fix:**
+1. Expanded `file.validation.allowed-types` to include `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/msword`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/zip`, and related MIME types.
+2. Increased multipart upload thresholds in `file-service` and Nginx to 50MB.
+
 
 
 

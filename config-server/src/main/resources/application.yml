@@ -8,7 +8,7 @@ spring:
     config:
       server:
         native:
-          search-locations: file:./config-repo
+          search-locations: ${SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS:file:/config-repo,file:./config-repo}
         default-label: main
 
 server:
@@ -17,7 +17,7 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
   instance:
     prefer-ip-address: true
 

@@ -23,19 +23,13 @@ gateway:
           uri: lb://user-service
           predicates:
             - Path=/api/v1.0/users/**,/api/v1.0/webhooks/**
-          filters:
-            - StripPrefix=2
 
         - id: file-service
           uri: lb://file-service
           predicates:
             - Path=/api/v1.0/files/**
-          filters:
-            - StripPrefix=2
 
         - id: payment-service
           uri: lb://payment-service
           predicates:
             - Path=/api/v1.0/payments/**,/api/v1.0/transactions/**
-          filters:
-            - StripPrefix=2

@@ -11,8 +11,8 @@ spring:
     open-in-view: false
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 25MB
+      max-file-size: 50MB
+      max-request-size: 50MB
 
 server:
   port: 8082
@@ -25,6 +25,9 @@ spring.autoconfigure.exclude: org.springframework.boot.autoconfigure.security.se
 file:
   storage:
     type: ${FILE_STORAGE_TYPE:local}
+  validation:
+    max-size: 52428800
+    allowed-types: ${FILE_ALLOWED_TYPES:image/jpeg,image/png,image/gif,image/webp,image/svg+xml,application/pdf,text/plain,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/zip,application/x-zip-compressed,application/octet-stream}
 
 # Cloudflare R2 / AWS S3 configuration
 r2:
@@ -39,3 +42,10 @@ r2:
 services:
   user:
     base-url: ${USER_SERVICE_URL:http://localhost:8081/api/v1.0}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
