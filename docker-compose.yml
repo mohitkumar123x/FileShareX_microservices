@@ -104,6 +104,7 @@ services:
       R2_SECRET_KEY: ${R2_SECRET_KEY:-}
       R2_BUCKET_NAME: ${R2_BUCKET_NAME:-filesharex-uploads}
       R2_PUBLIC_URL: ${R2_PUBLIC_URL:-https://pub-xxx.r2.dev}
+      R2_REGION: ${R2_REGION:-ap-southeast-2}
       USER_SERVICE_URL: http://user-service:8081/api/v1.0
     ports:
       - "8082:8082"

@@ -35,6 +35,9 @@ public class R2FileStorageStrategy implements FileStorageStrategy
     @Value("${r2.public-url}")
     private String publicUrl;
 
+    @Value("${r2.region:auto}")
+    private String region;
+
     private S3Client s3Client;
 
     @PostConstruct
@@ -48,10 +51,11 @@ public class R2FileStorageStrategy implements FileStorageStrategy
 
         AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
 
+        String configuredRegion = (region != null && !region.isBlank()) ? region : "auto";
         s3Client = S3Client.builder()
                 .endpointOverride(URI.create(endpoint))
                 .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of("auto"))
+                .region(Region.of(configuredRegion))
                 .forcePathStyle(true)
                 .build();
 

@@ -1161,4 +1161,23 @@ Process exited with status 1
      start_period: 40s
    ```
 
+---
+
+### Issue 15.4: S3 SigV4 Signature Failure when Region is Hardcoded to 'auto'
+
+**Error:**
+AWS S3 returns `400 Bad Request` (`The authorization header is malformed; the region 'auto' is wrong; expecting 'ap-southeast-2'`) when uploading or downloading files to native AWS S3.
+
+**Root Cause:**
+`R2FileStorageStrategy.java` was configured with `Region.of("auto")` for Cloudflare R2 compatibility. While Cloudflare R2 ignores region naming in SigV4, AWS S3 strictly requires the actual bucket region (`ap-southeast-2`) to compute the SHA-256 HMAC signature.
+
+**Fix:**
+1. Added configurable `r2.region` parameter in `R2FileStorageStrategy.java`:
+   ```java
+   @Value("${r2.region:auto}")
+   private String region;
+   ```
+2. Exposed `R2_REGION` in `config-repo/file-service.yml` and `docker-compose.yml`, allowing dynamic switching between `"auto"` (Cloudflare R2) and specific regions (e.g. `"ap-southeast-2"` for AWS S3).
+
+
 

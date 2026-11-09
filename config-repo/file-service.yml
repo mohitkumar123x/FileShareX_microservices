@@ -26,13 +26,14 @@ file:
   storage:
     type: ${FILE_STORAGE_TYPE:local}
 
-# Cloudflare R2 configuration
+# Cloudflare R2 / AWS S3 configuration
 r2:
   endpoint: ${R2_ENDPOINT:https://ACCOUNT_ID.r2.cloudflarestorage.com}
   access-key: ${R2_ACCESS_KEY:}
   secret-key: ${R2_SECRET_KEY:}
   bucket-name: ${R2_BUCKET_NAME:filesharex-uploads}
   public-url: ${R2_PUBLIC_URL:https://pub-xxx.r2.dev}
+  region: ${R2_REGION:auto}
 
 # User service client
 services:
