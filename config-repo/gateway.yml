@@ -1,23 +1,21 @@
 spring:
   application:
     name: gateway
-
-server:
-  port: 8080
-
-# CORS
-gateway:
-  globalcors:
-    cors-configurations:
-      '[/**]':
-        allowedOrigins: "*"
-        allowedMethods: "*"
-        allowedHeaders: "*"
-        allowCredentials: true
-
-# Routes
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: 10000
+        response-timeout: 60s
+        pool:
+          type: elastic
+          max-idle-time: 15s
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
+            allowCredentials: true
       routes:
         - id: user-service
           uri: lb://user-service
@@ -33,3 +31,11 @@ gateway:
           uri: lb://payment-service
           predicates:
             - Path=/api/v1.0/payments/**,/api/v1.0/transactions/**
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1.0/notifications/**
+
+server:
+  port: 8080

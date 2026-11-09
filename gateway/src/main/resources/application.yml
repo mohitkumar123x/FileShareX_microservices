@@ -20,6 +20,9 @@ eureka:
     prefer-ip-address: true
 
 # Gateway routes
+spring.cloud.gateway.httpclient.connect-timeout: 10000
+spring.cloud.gateway.httpclient.response-timeout: 60s
+
 spring.cloud.gateway.routes[0].id: user-service
 spring.cloud.gateway.routes[0].uri: lb://user-service
 spring.cloud.gateway.routes[0].predicates[0]: Path=/api/v1.0/users/**,/api/v1.0/webhooks/**

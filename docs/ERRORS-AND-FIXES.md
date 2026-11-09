@@ -1292,6 +1292,36 @@ Spring Security WebFlux intercepted all requests before Gateway's `ClerkJwtAuthF
 **Fix:**
 Configured `SecurityConfig` to disable form login, basic auth, CSRF, and permit all exchanges (`.anyExchange().permitAll()`) so that `ClerkJwtAuthFilter` can validate the Clerk JWT Bearer token, extract the subject, and inject `X-Clerk-Id` into downstream requests. Added structured logging in `ClerkJwtAuthFilter` for authentication tracking.
 
+---
+
+### Issue 15.10: 502 Bad Gateway on Multipart File Upload Due to Nginx Proxy Buffering, S3 Path-Style Incompatibility, and Netty Stream Drops
+
+**Error:**
+```text
+POST http://3.107.225.31/api/v1.0/files/upload 502 (Bad Gateway)
+AxiosError: Request failed with status code 502
+```
+
+**Root Causes:**
+1. **Nginx HTTP/1.0 and Proxy Request Buffering**:
+   By default, Nginx `proxy_pass` uses HTTP/1.0 with request buffering enabled. When a browser uploads a multipart file, Nginx buffers the full payload and sends it over HTTP/1.0 with `Connection: close`. Spring Cloud Gateway's Netty HTTP client / server expects HTTP/1.1 chunked streams, causing upstream prematurely closed connection drops.
+2. **AWS S3 Path-Style Access Deprecation**:
+   `R2FileStorageStrategy` unconditionally set `builder.forcePathStyle(true)`. Modern AWS S3 buckets (such as `filesharex-storage-mohit` in `ap-southeast-2`) reject path-style URLs (`s3.region.amazonaws.com/bucket`) or issue 301/307 redirects that cause AWS SDK putObject failures.
+3. **Missing S3 Credential Provider Fallback**:
+   If environment variables `R2_ACCESS_KEY` or `R2_SECRET_KEY` are unset in the Docker container, `R2FileStorageStrategy` previously left `s3Client = null`.
+4. **Spring MVC Multipart Parameter Binding**:
+   `FileController.uploadFiles` used `@RequestPart("files")` which is meant for JSON parts rather than standard browser `FormData.append('files', file)`.
+
+**Fix:**
+1. **Configured Nginx Streaming**:
+   Added `proxy_http_version 1.1;`, `proxy_buffering off;`, `proxy_request_buffering off;`, and 120s timeouts to `frontend/nginx.conf`.
+2. **Conditional Path-Style Access in AWS SDK**:
+   Updated `R2FileStorageStrategy` so that `forcePathStyle(true)` is only enabled for non-AWS endpoints (e.g. Cloudflare R2, MinIO). For AWS S3 endpoints (`amazonaws.com`), standard virtual-hosted bucket addressing is preserved.
+3. **Fallback to DefaultCredentialsProvider**:
+   Added fallback to `DefaultCredentialsProvider.create()` when keys are not explicitly passed via environment variables, allowing the SDK to automatically discover IAM instance profiles or host credentials.
+4. **Switched to `@RequestParam("files")`**:
+   Updated `FileController.uploadFiles` to use `@RequestParam("files") MultipartFile[] files` for seamless FormData ingestion.
+
 
 
 

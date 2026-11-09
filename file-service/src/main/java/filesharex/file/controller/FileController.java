@@ -32,7 +32,7 @@ public class FileController
 
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFiles(
-            @RequestPart("files") MultipartFile[] files,
+            @RequestParam("files") MultipartFile[] files,
             @RequestHeader(CLERK_ID_HEADER) String clerkId) throws IOException
     {
 

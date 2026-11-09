@@ -5,9 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.core.sync.RequestBody;
 
@@ -43,23 +46,38 @@ public class R2FileStorageStrategy implements FileStorageStrategy
     @PostConstruct
     public void init()
     {
-        if (accessKey == null || accessKey.isBlank() || secretKey == null || secretKey.isBlank())
+        AwsCredentialsProvider credentialsProvider;
+        if (accessKey != null && !accessKey.isBlank() && secretKey != null && !secretKey.isBlank())
         {
-            log.warn("R2 credentials not configured. R2 storage operations will fail if invoked.");
-            return;
+            credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
+        }
+        else
+        {
+            log.warn("R2/S3 access/secret keys not explicitly set in env; falling back to DefaultCredentialsProvider");
+            credentialsProvider = DefaultCredentialsProvider.create();
         }
 
-        AwsBasicCredentials credentials = AwsBasicCredentials.create(accessKey, secretKey);
+        String configuredRegion = (region != null && !region.isBlank() && !"auto".equalsIgnoreCase(region))
+                ? region
+                : "ap-southeast-2";
 
-        String configuredRegion = (region != null && !region.isBlank()) ? region : "auto";
-        s3Client = S3Client.builder()
-                .endpointOverride(URI.create(endpoint))
-                .credentialsProvider(StaticCredentialsProvider.create(credentials))
-                .region(Region.of(configuredRegion))
-                .forcePathStyle(true)
-                .build();
+        S3ClientBuilder builder = S3Client.builder()
+                .credentialsProvider(credentialsProvider)
+                .region(Region.of(configuredRegion));
 
-        log.info("R2 S3 client initialized for bucket: {}", bucketName);
+        if (endpoint != null && !endpoint.isBlank())
+        {
+            builder.endpointOverride(URI.create(endpoint));
+            // Only force path style for non-AWS endpoints like Cloudflare R2 or MinIO.
+            // AWS S3 buckets (created after 2020) reject path-style or return redirects.
+            if (!endpoint.contains("amazonaws.com"))
+            {
+                builder.forcePathStyle(true);
+            }
+        }
+
+        s3Client = builder.build();
+        log.info("S3/R2 client initialized for bucket: {} (region: {})", bucketName, configuredRegion);
     }
 
     @Override
