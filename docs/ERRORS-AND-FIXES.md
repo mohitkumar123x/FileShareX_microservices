@@ -20,6 +20,7 @@ This document catalogs all known errors, issues, and their fixes encountered dur
 12. [Local Service Startup Issues](#12-local-service-startup-issues)
 13. [Prometheus & Grafana Monitoring Issues](#13-prometheus--grafana-monitoring-issues)
 14. [MongoDB to PostgreSQL Migration](#14-mongodb-to-postgresql-migration)
+15. [CI/CD & Cloud Deployment Issues](#15-cicd--cloud-deployment-issues)
 
 ---
 
@@ -1061,3 +1062,44 @@ docker run -d --name filesharex-grafana --network filesharex-monitoring -p 3000:
   -v "./monitoring/grafana/dashboards:/var/lib/grafana/dashboards" \
   grafana/grafana:latest
 ```
+
+---
+
+## 15. CI/CD & Cloud Deployment Issues
+
+### Issue 15.1: Multi-Stage Docker Gradle Build Failure in Microservices Subprojects
+
+**Error:**
+```text
+failed to solve: process "/bin/sh -c chmod +x gradlew && ./gradlew :eureka-server:bootJar --no-daemon" did not complete successfully: exit code: 1
+Process exited with status 1
+```
+
+**Root Causes:**
+1. **Multi-Project Missing Directories**: The root `settings.gradle` registers 7 subprojects (`eureka-server`, `config-server`, `gateway`, `user-service`, `file-service`, `payment-service`, `notification-service`). When individual service Dockerfiles only copied their own isolated subfolder (e.g. `COPY eureka-server/ ./eureka-server/`), Gradle evaluation failed because the sibling subproject paths referenced in `settings.gradle` did not exist inside the container workspace.
+2. **CRLF Line Endings in Alpine**: On Windows workstations, Git checked out `gradlew` with Windows CRLF line endings (`\r\n`). In Alpine Linux containers, BusyBox `/bin/sh` cannot parse the `\r` carriage return in the shebang, causing `/bin/sh: ./gradlew: not found` or syntax failure (Exit code 1).
+3. **Container Build Thrashing on EC2 (`t3.small`)**: Building 7 distinct Docker images in parallel—each spinning up an independent Gradle daemon and compiling Java 21 code inside the container—exhausted RAM and CPU on smaller cloud instances.
+
+**Fix:**
+1. **Host-Level Single Gradle Build**:
+   Updated `.github/workflows/deploy-backend.yml` to compile all 7 service artifacts in a single host-level execution prior to container assembly:
+   ```bash
+   sed -i 's/\r$//' gradlew
+   chmod +x gradlew
+   ./gradlew bootJar --no-daemon
+   ```
+   This compiles all microservice JARs in ~22 seconds using a unified build cache, avoiding redundant Gradle downloads and memory thrashing.
+2. **Single-Stage Lightweight Dockerfiles**:
+   Converted all 7 Dockerfiles to lightweight single-stage `eclipse-temurin:21-jre-alpine` runtime images that simply copy their respective pre-built `build/libs/*SNAPSHOT.jar`. Container creation reduced from ~5 minutes to under 3 seconds per service.
+3. **Enforced Linux Line Endings (`.gitattributes`)**:
+   Created a repository-level `.gitattributes` file:
+   ```gitattributes
+   * text=auto eol=lf
+   *.bat text eol=crlf
+   *.ps1 text eol=crlf
+   gradlew text eol=lf
+   *.sh text eol=lf
+   ```
+4. **JVM Memory Limits for Cloud Free Tier / Credits (`t3.small`)**:
+   Injected `JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"` into `docker-compose.yml` across all Java microservices to cap heap allocation within 2 GB instance constraints.
+
