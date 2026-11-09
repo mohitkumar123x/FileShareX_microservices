@@ -6,6 +6,8 @@ services:
       dockerfile: eureka-server/Dockerfile
     container_name: filesharex-eureka
     restart: unless-stopped
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx150m -XX:+UseG1GC"
     ports:
       - "8761:8761"
     healthcheck:
@@ -23,6 +25,8 @@ services:
     depends_on:
       eureka-server:
         condition: service_healthy
+    environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx150m -XX:+UseG1GC"
     ports:
       - "9999:9999"
     healthcheck:
@@ -44,6 +48,7 @@ services:
       config-server:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
       CLERK_ISSUER: ${CLERK_ISSUER:-https://key-foxhound-56.clerk.accounts.dev}
       CLERK_JWKS_URL: ${CLERK_JWKS_URL:-https://key-foxhound-56.clerk.accounts.dev/.well-known/jwks.json}
     ports:
@@ -63,6 +68,7 @@ services:
       postgres-users:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-users:5432/filesharex_users
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
@@ -86,6 +92,7 @@ services:
       postgres-files:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-files:5432/filesharex_files
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
@@ -113,6 +120,7 @@ services:
       postgres-payments:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payments:5432/filesharex_payments
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}
@@ -137,6 +145,7 @@ services:
       postgres-notifications:
         condition: service_healthy
     environment:
+      JAVA_TOOL_OPTIONS: "-Xms64m -Xmx150m -XX:+UseG1GC"
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-notifications:5432/filesharex_notifications
       SPRING_DATASOURCE_USERNAME: filesharex
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-filesharex}

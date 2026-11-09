@@ -4,7 +4,7 @@ WORKDIR /app
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle/ ./gradle/
 COPY eureka-server/ ./eureka-server/
-RUN ./gradlew :eureka-server:bootJar --no-daemon
+RUN chmod +x gradlew && ./gradlew :eureka-server:bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

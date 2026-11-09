@@ -4,7 +4,7 @@ WORKDIR /app
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle/ ./gradle/
 COPY file-service/ ./file-service/
-RUN ./gradlew :file-service:bootJar --no-daemon
+RUN chmod +x gradlew && ./gradlew :file-service:bootJar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
