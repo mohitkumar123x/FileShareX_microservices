@@ -38,13 +38,19 @@ jobs:
             git reset --hard
             git pull origin main
 
-            # 3. If ENV_FILE secret was passed, update .env; otherwise keep existing server .env
-            if [ -n "${{ secrets.ENV_FILE }}" ]; then
-              echo "${{ secrets.ENV_FILE }}" > .env
+            # 3. Ensure Java 21 JDK is installed on EC2 for building
+            if ! command -v javac &> /dev/null; then
+              echo "Installing OpenJDK 21 on EC2..."
+              sudo apt update && sudo apt install -y openjdk-21-jdk-headless
             fi
 
-            # 4. Rebuild and launch containers
+            # 4. Fix line endings and build all service jars once on host (fast & reliable)
+            sed -i 's/\r$//' gradlew
+            chmod +x gradlew
+            ./gradlew bootJar --no-daemon
+
+            # 5. Build and launch containers using pre-built jars
             docker compose up -d --build --remove-orphans
 
-            # 5. Clean up dangling images to save free tier disk space
+            # 6. Clean up dangling images to save free tier disk space
             docker image prune -f
