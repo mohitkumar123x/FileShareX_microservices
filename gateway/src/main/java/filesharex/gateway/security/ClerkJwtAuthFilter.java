@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
@@ -19,6 +21,7 @@ import java.util.Base64;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ClerkJwtAuthFilter implements GlobalFilter, Ordered
 {
 
@@ -36,7 +39,7 @@ public class ClerkJwtAuthFilter implements GlobalFilter, Ordered
 
         // Skip auth for public endpoints
         if (path.contains("/webhooks") || path.contains("/public") ||
-            path.contains("/download") || path.contains("/health"))
+            path.contains("/download") || path.contains("/health") || path.contains("/actuator"))
         {
             return chain.filter(exchange);
         }
@@ -45,7 +48,8 @@ public class ClerkJwtAuthFilter implements GlobalFilter, Ordered
 
         if (authHeader == null || !authHeader.startsWith("Bearer "))
         {
-            exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN);
+            log.warn("Missing or invalid Authorization header for path: {}", path);
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
 
@@ -55,7 +59,8 @@ public class ClerkJwtAuthFilter implements GlobalFilter, Ordered
             String[] chunks = token.split("\\.");
             if (chunks.length < 3)
             {
-                exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN);
+                log.warn("Invalid JWT structure for path: {}", path);
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                 return exchange.getResponse().setComplete();
             }
 
@@ -65,7 +70,8 @@ public class ClerkJwtAuthFilter implements GlobalFilter, Ordered
 
             if (!headerNode.has("kid"))
             {
-                exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN);
+                log.warn("JWT header missing 'kid' for path: {}", path);
+                exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
                 return exchange.getResponse().setComplete();
             }
 
@@ -91,7 +97,8 @@ public class ClerkJwtAuthFilter implements GlobalFilter, Ordered
         }
         catch (Exception e)
         {
-            exchange.getResponse().setStatusCode(org.springframework.http.HttpStatus.FORBIDDEN);
+            log.error("JWT validation failed for path {}: {}", path, e.getMessage());
+            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
     }

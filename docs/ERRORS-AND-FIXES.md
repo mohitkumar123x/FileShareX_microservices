@@ -1268,6 +1268,30 @@ File type not allowed. Allowed types: image/jpeg,image/png,image/gif,application
 1. Expanded `file.validation.allowed-types` to include `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/msword`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/zip`, and related MIME types.
 2. Increased multipart upload thresholds in `file-service` and Nginx to 50MB.
 
+---
+
+### Issue 15.9: Gateway Returns 401 Unauthorized Due to Conflicting Spring Security FilterChain
+
+**Error:**
+```text
+AxiosError: Request failed with status code 401
+at Bg (http://3.107.225.31/assets/index-D8RXZBd9.js:253:1080)
+request: XMLHttpRequest {requestMethod: 'POST', parentId: '/api/v1.0/files/upload', ...}
+status: 401, statusText: 'Unauthorized'
+```
+
+**Root Causes:**
+`gateway/src/main/java/filesharex/gateway/config/SecurityConfig.java` had:
+```java
+exchanges -> exchanges
+    .pathMatchers("/webhooks/**", "/files/public/**", "/files/download/**", "/health", "/actuator/**").permitAll()
+    .anyExchange().authenticated()
+```
+Spring Security WebFlux intercepted all requests before Gateway's `ClerkJwtAuthFilter`. Because Spring Security did not have an internal authentication provider configured in `ServerHttpSecurity` (since Clerk JWT authentication is handled by the dedicated `ClerkJwtAuthFilter` global filter), Spring Security treated all requests to `/api/v1.0/files/upload` as unauthenticated and returned `401 Unauthorized`.
+
+**Fix:**
+Configured `SecurityConfig` to disable form login, basic auth, CSRF, and permit all exchanges (`.anyExchange().permitAll()`) so that `ClerkJwtAuthFilter` can validate the Clerk JWT Bearer token, extract the subject, and inject `X-Clerk-Id` into downstream requests. Added structured logging in `ClerkJwtAuthFilter` for authentication tracking.
+
 
 
 
