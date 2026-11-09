@@ -1103,3 +1103,30 @@ Process exited with status 1
 4. **JVM Memory Limits for Cloud Free Tier / Credits (`t3.small`)**:
    Injected `JAVA_TOOL_OPTIONS: "-Xms64m -Xmx180m -XX:+UseG1GC"` into `docker-compose.yml` across all Java microservices to cap heap allocation within 2 GB instance constraints.
 
+---
+
+### Issue 15.2: Missing Gradle Wrapper JAR in Git Repository
+
+**Error:**
+```text
+Error: Could not find or load main class org.gradle.wrapper.GradleWrapperMain
+Caused by: java.lang.ClassNotFoundException: org.gradle.wrapper.GradleWrapperMain
+Process exited with status 1
+```
+
+**Root Cause:**
+The root `.gitignore` contained a wildcard rule `*.jar` intended to ignore compiled Java application packages, but this unintentionally ignored the essential `gradle/wrapper/gradle-wrapper.jar` binary as well. When the EC2 instance cloned the repository, the wrapper script `./gradlew` had no entrypoint JAR to execute.
+
+**Fix:**
+1. Whitelisted the wrapper JAR in `.gitignore`:
+   ```gitignore
+   *.jar
+   !gradle/wrapper/gradle-wrapper.jar
+   ```
+2. Force-tracked the binary into Git:
+   ```bash
+   git add -f gradle/wrapper/gradle-wrapper.jar
+   git commit -m "fix: include gradle-wrapper.jar in repository"
+   ```
+
+
