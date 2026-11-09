@@ -1179,5 +1179,35 @@ AWS S3 returns `400 Bad Request` (`The authorization header is malformed; the re
    ```
 2. Exposed `R2_REGION` in `config-repo/file-service.yml` and `docker-compose.yml`, allowing dynamic switching between `"auto"` (Cloudflare R2) and specific regions (e.g. `"ap-southeast-2"` for AWS S3).
 
+---
+
+### Issue 15.5: Frontend Hardcoded localhost:8080 Resulting in net::ERR_CONNECTION_REFUSED
+
+**Error:**
+```text
+Failed to load resource: net::ERR_CONNECTION_REFUSED http://localhost:8080/api/v1.0/files/my
+Failed to load resource: net::ERR_CONNECTION_REFUSED http://localhost:8080/api/v1.0/users/credits
+Failed to load resource: net::ERR_CONNECTION_REFUSED http://localhost:8080/api/v1.0/files/upload
+Error uploading files: AxiosError: Network Error
+```
+
+**Root Causes:**
+1. **Client-Side Environment Fallback**: `frontend/src/util/apiEndpoints.js` had a default fallback of `http://localhost:8080/api/v1.0`. Because Vite bundles environment variables at build-time, client browsers running on external machines attempted to connect to their own local machine's `localhost:8080` instead of the EC2 public server.
+2. **Missing CI/CD Path Trigger**: The `.github/workflows/deploy-backend.yml` configuration had omitted `frontend/**` from its trigger paths, preventing frontend updates and Nginx proxy configuration changes from deploying.
+
+**Fix:**
+1. Updated `apiEndpoints.js` to strip any `localhost` references and default to relative `/api/v1.0`:
+   ```javascript
+   const rawBase = import.meta.env.VITE_API_BASE_URL;
+   const BASE_URL = (
+       rawBase && !rawBase.includes("localhost")
+           ? rawBase
+           : "/api/v1.0"
+   ).replace(/\/$/, "");
+   ```
+   When requests use relative `/api/v1.0`, browsers automatically target the host they loaded from (`http://3.107.225.31/api/v1.0`), which Nginx seamlessly reverse-proxies to `gateway:8080` on the Docker bridge network.
+2. Added `frontend/**` to `deploy-backend.yml` workflow triggers.
+
+
 
 
