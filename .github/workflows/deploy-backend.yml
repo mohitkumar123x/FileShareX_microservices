@@ -13,6 +13,7 @@ on:
       - "payment-service/**"
       - "notification-service/**"
       - "frontend/**"
+      - "monitoring/**"
       - "docker-compose.yml"
       - ".github/workflows/deploy-backend.yml"
   workflow_dispatch:

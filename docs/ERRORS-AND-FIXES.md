@@ -1322,6 +1322,26 @@ AxiosError: Request failed with status code 502
 4. **Switched to `@RequestParam("files")`**:
    Updated `FileController.uploadFiles` to use `@RequestParam("files") MultipartFile[] files` for seamless FormData ingestion.
 
+---
+
+### Issue 15.11: Prometheus and Grafana "No Data" Due to host.docker.internal Resolution Failure on Linux EC2
+
+**Error:**
+```text
+Grafana dashboard displays "No data" across all panels with red warning icons.
+Prometheus targets show DOWN with "dial tcp: lookup host.docker.internal: no such host".
+```
+
+**Root Causes:**
+1. `host.docker.internal` is a DNS name provided by Docker Desktop for Windows and macOS. On Linux (Ubuntu on EC2), it does not resolve inside Docker containers by default.
+2. `monitoring/prometheus/prometheus.yml` configured all scrape targets as `host.docker.internal:<port>`.
+3. `monitoring/grafana/provisioning/datasources/prometheus.yml` configured the Prometheus datasource as `http://host.docker.internal:9090`.
+
+**Fix:**
+1. Replaced `host.docker.internal` with Docker bridge container hostnames (`gateway:8080`, `user-service:8081`, `file-service:8082`, `payment-service:8083`, `notification-service:8084`, `eureka-server:8761`) in `monitoring/prometheus/prometheus.yml`.
+2. Updated Grafana datasource configuration to `http://prometheus:9090`.
+3. Added `monitoring/**` to `.github/workflows/deploy-backend.yml` paths trigger.
+
 
 
 
