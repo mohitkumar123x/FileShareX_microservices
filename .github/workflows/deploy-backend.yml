@@ -53,6 +53,7 @@ jobs:
 
             # 5. Build and launch containers using pre-built jars
             docker compose up -d --build --remove-orphans
+            docker compose restart prometheus grafana
 
             # 6. Clean up dangling images to save free tier disk space
             docker image prune -f
